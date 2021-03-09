@@ -1738,34 +1738,37 @@ class core_accesslib_testcase extends advanced_testcase {
         $this->setAdminUser();
 
         $roles = get_user_roles_in_course($user1->id, $course->id);
-        $this->assertEquals(1, preg_match_all('/,/', $roles, $matches));
-        $this->assertTrue(strpos($roles, role_get_name($teacherrole, $coursecontext)) !== false);
+        $this->assertEquals([
+            role_get_name($teacherrole, $coursecontext),
+            role_get_name($studentrole, $coursecontext),
+        ], array_map('strip_tags', explode(', ', $roles)));
 
         $roles = get_user_roles_in_course($user2->id, $course->id);
-        $this->assertEquals(0, preg_match_all('/,/', $roles, $matches));
-        $this->assertTrue(strpos($roles, role_get_name($studentrole, $coursecontext)) !== false);
+        $this->assertEquals([
+            role_get_name($studentrole, $coursecontext),
+        ], array_map('strip_tags', explode(', ', $roles)));
 
         $roles = get_user_roles_in_course($user3->id, $course->id);
-        $this->assertSame('', $roles);
+        $this->assertEmpty($roles);
 
         // Managers should be able to see a link to their own role type, given they can assign it in the context.
         $this->setUser($user4);
         $roles = get_user_roles_in_course($user4->id, $course->id);
-        $this->assertNotEmpty($roles);
-        $this->assertEquals(1, count(explode(',', $roles)));
-        $this->assertTrue(strpos($roles, role_get_name($managerrole, $coursecontext)) !== false);
+        $this->assertEquals([
+            role_get_name($managerrole, $coursecontext),
+        ], array_map('strip_tags', explode(', ', $roles)));
 
         // Managers should see 2 roles if viewing a user who has been enrolled as a student and a teacher in the course.
         $roles = get_user_roles_in_course($user1->id, $course->id);
-        $this->assertEquals(2, count(explode(',', $roles)));
-        $this->assertTrue(strpos($roles, role_get_name($studentrole, $coursecontext)) !== false);
-        $this->assertTrue(strpos($roles, role_get_name($teacherrole, $coursecontext)) !== false);
+        $this->assertEquals([
+            role_get_name($teacherrole, $coursecontext),
+            role_get_name($studentrole, $coursecontext),
+        ], array_map('strip_tags', explode(', ', $roles)));
 
         // Students should not see the manager role if viewing a manager's profile.
         $this->setUser($user2);
         $roles = get_user_roles_in_course($user4->id, $course->id);
         $this->assertEmpty($roles); // Should see 0 roles on the manager's profile.
-        $this->assertFalse(strpos($roles, role_get_name($managerrole, $coursecontext)) !== false);
     }
 
     /**
@@ -3641,6 +3644,58 @@ class core_accesslib_testcase extends advanced_testcase {
                 'repository/upload:view', 'atto/recordrtc:recordaudio'];
 
         $this->assert_capability_list_contains($expectedcapabilities, $actual);
+    }
+
+    /**
+     * Test that {@see context_block::get_capabilities} returns capabilities relevant to blocks
+     */
+    public function test_context_block_caps_returned_by_get_capabilities_block_context(): void {
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $block = $this->getDataGenerator()->create_block('online_users', [
+            'parentcontextid' => context_course::instance($course->id)->id,
+        ]);
+
+        $capabilities = context_block::instance($block->id)->get_capabilities();
+
+        // Just test a few representative capabilities.
+        $expected = ['block/online_users:addinstance', 'moodle/block:edit', 'moodle/block:view'];
+        $this->assert_capability_list_contains($expected, $capabilities);
+
+        // Now test with different sorting.
+        $capabilitiesbyname = context_block::instance($block->id)->get_capabilities('riskbitmask');
+
+        $capabilitynames = array_column($capabilities, 'name');
+        $capabilitynamesordered = array_column($capabilitiesbyname, 'name');
+
+        // Each array should contain the same data, ordered differently.
+        $this->assertEqualsCanonicalizing($capabilitynames, $capabilitynamesordered);
+        $this->assertNotSame($capabilitynames, $capabilitynamesordered);
+    }
+
+    /**
+     * Test that {@see context_user::get_capabilities} returns capabilities relevant to users
+     */
+    public function test_context_user_caps_returned_by_get_capabilities_user_context(): void {
+        $this->resetAfterTest();
+
+        $user = $this->getDataGenerator()->create_user();
+        $capabilities = context_user::instance($user->id)->get_capabilities();
+
+        // Just test a few representative capabilities.
+        $expected = ['moodle/user:editmessageprofile', 'moodle/user:editprofile', 'moodle/user:viewalldetails'];
+        $this->assert_capability_list_contains($expected, $capabilities);
+
+        // Now test with different sorting.
+        $capabilitiesbyname = context_user::instance($user->id)->get_capabilities('name');
+
+        $capabilitynames = array_column($capabilities, 'name');
+        $capabilitynamesordered = array_column($capabilitiesbyname, 'name');
+
+        // Each array should contain the same data, ordered differently.
+        $this->assertEqualsCanonicalizing($capabilitynames, $capabilitynamesordered);
+        $this->assertNotSame($capabilitynames, $capabilitynamesordered);
     }
 
     /**

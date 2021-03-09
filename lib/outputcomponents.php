@@ -3407,6 +3407,15 @@ class block_contents {
     public function add_class($class) {
         $this->attributes['class'] .= ' '.$class;
     }
+
+    /**
+     * Check if the block is a fake block.
+     *
+     * @return boolean
+     */
+    public function is_fake() {
+        return isset($this->attributes['data-block']) && $this->attributes['data-block'] == '_fake';
+    }
 }
 
 
@@ -4908,6 +4917,14 @@ class progress_bar implements renderable, templatable {
     }
 
     /**
+     * Getter for ID
+     * @return string id
+     */
+    public function get_id() : string {
+        return $this->html_id;
+    }
+
+    /**
      * Create a new progress bar, this function will output html.
      *
      * @return void Echo's output
@@ -4916,9 +4933,6 @@ class progress_bar implements renderable, templatable {
         global $OUTPUT;
 
         $this->time_start = microtime(true);
-        if (CLI_SCRIPT) {
-            return; // Temporary solution for cli scripts.
-        }
 
         flush();
         echo $OUTPUT->render($this);
@@ -4934,13 +4948,11 @@ class progress_bar implements renderable, templatable {
      * @throws coding_exception
      */
     private function _update($percent, $msg) {
+        global $OUTPUT;
+
         if (empty($this->time_start)) {
             throw new coding_exception('You must call create() (or use the $autostart ' .
                     'argument to the constructor) before you try updating the progress bar.');
-        }
-
-        if (CLI_SCRIPT) {
-            return; // Temporary solution for cli scripts.
         }
 
         $estimate = $this->estimate($percent);
@@ -4956,16 +4968,15 @@ class progress_bar implements renderable, templatable {
             return;
         }
 
-        $estimatemsg = null;
-        if (is_numeric($estimate)) {
-            $estimatemsg = get_string('secondsleft', 'moodle', round($estimate, 2));
+        $estimatemsg = '';
+        if ($estimate != 0 && is_numeric($estimate)) {
+            $estimatemsg = format_time(round($estimate));
         }
 
-        $this->percent = round($percent, 2);
+        $this->percent = $percent;
         $this->lastupdate = microtime(true);
 
-        echo html_writer::script(js_writer::function_call('updateProgressBar',
-            array($this->html_id, $this->percent, $msg, $estimatemsg)));
+        echo $OUTPUT->render_progress_bar_update($this->html_id, sprintf("%.1f", $this->percent), $msg, $estimatemsg);
         flush();
     }
 

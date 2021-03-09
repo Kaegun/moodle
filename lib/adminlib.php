@@ -2725,6 +2725,58 @@ class admin_setting_configpasswordunmask_with_advanced extends admin_setting_con
 }
 
 /**
+ * Admin setting class for encrypted values using secure encryption.
+ *
+ * @copyright 2019 The Open University
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class admin_setting_encryptedpassword extends admin_setting {
+
+    /**
+     * Constructor. Same as parent except that the default value is always an empty string.
+     *
+     * @param string $name Internal name used in config table
+     * @param string $visiblename Name shown on form
+     * @param string $description Description that appears below field
+     */
+    public function __construct(string $name, string $visiblename, string $description) {
+        parent::__construct($name, $visiblename, $description, '');
+    }
+
+    public function get_setting() {
+        return $this->config_read($this->name);
+    }
+
+    public function write_setting($data) {
+        $data = trim($data);
+        if ($data === '') {
+            // Value can really be set to nothing.
+            $savedata = '';
+        } else {
+            // Encrypt value before saving it.
+            $savedata = \core\encryption::encrypt($data);
+        }
+        return ($this->config_write($this->name, $savedata) ? '' : get_string('errorsetting', 'admin'));
+    }
+
+    public function output_html($data, $query='') {
+        global $OUTPUT;
+
+        $default = $this->get_defaultsetting();
+        $context = (object) [
+            'id' => $this->get_id(),
+            'name' => $this->get_full_name(),
+            'set' => $data !== '',
+            'novalue' => $this->get_setting() === null
+        ];
+        $element = $OUTPUT->render_from_template('core_admin/setting_encryptedpassword', $context);
+
+        return format_admin_setting($this, $this->visiblename, $element, $this->description,
+                true, '', $default, $query);
+    }
+}
+
+/**
  * Empty setting used to allow flags (advanced) on settings that can have no sensible default.
  * Note: Only advanced makes sense right now - locked does not.
  *
@@ -3762,6 +3814,8 @@ class admin_setting_configduration extends admin_setting {
 
     /** @var int default duration unit */
     protected $defaultunit;
+    /** @var callable|null Validation function */
+    protected $validatefunction = null;
 
     /**
      * Constructor
@@ -3783,6 +3837,36 @@ class admin_setting_configduration extends admin_setting {
             $this->defaultunit = 86400;
         }
         parent::__construct($name, $visiblename, $description, $defaultsetting);
+    }
+
+    /**
+     * Sets a validate function.
+     *
+     * The callback will be passed one parameter, the new setting value, and should return either
+     * an empty string '' if the value is OK, or an error message if not.
+     *
+     * @param callable|null $validatefunction Validate function or null to clear
+     * @since Moodle 3.10
+     */
+    public function set_validate_function(?callable $validatefunction = null) {
+        $this->validatefunction = $validatefunction;
+    }
+
+    /**
+     * Validate the setting. This uses the callback function if provided; subclasses could override
+     * to carry out validation directly in the class.
+     *
+     * @param int $data New value being set
+     * @return string Empty string if valid, or error message text
+     * @since Moodle 3.10
+     */
+    protected function validate_setting(int $data): string {
+        // If validation function is specified, call it now.
+        if ($this->validatefunction) {
+            return call_user_func($this->validatefunction, $data);
+        } else {
+            return '';
+        }
     }
 
     /**
@@ -3868,6 +3952,12 @@ class admin_setting_configduration extends admin_setting {
         $seconds = (int)($data['v']*$data['u']);
         if ($seconds < 0) {
             return get_string('errorsetting', 'admin');
+        }
+
+        // Validate the new setting.
+        $error = $this->validate_setting($seconds);
+        if ($error) {
+            return $error;
         }
 
         $result = $this->config_write($this->name, $seconds);
@@ -6219,7 +6309,7 @@ class admin_setting_special_registerauth extends admin_setting_configselect {
         $this->choices = array();
         $this->choices[''] = get_string('disable');
 
-        $authsenabled = get_enabled_auth_plugins(true);
+        $authsenabled = get_enabled_auth_plugins();
 
         foreach ($authsenabled as $auth) {
             $authplugin = get_auth_plugin($auth);
@@ -6641,32 +6731,6 @@ class admin_page_managemessageoutputs extends admin_externalpage {
         }
     }
 }
-
-/**
- * Default message outputs configuration
- *
- * @deprecated since Moodle 3.7 MDL-64495. Please use admin_page_managemessageoutputs instead.
- * @todo       MDL-64866 This will be deleted in Moodle 3.11.
- *
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-class admin_page_defaultmessageoutputs extends admin_page_managemessageoutputs {
-    /**
-     * Calls parent::__construct with specific arguments
-     *
-     * @deprecated since Moodle 3.7 MDL-64495. Please use admin_page_managemessageoutputs instead.
-     * @todo       MDL-64866 This will be deleted in Moodle 3.11.
-     */
-    public function __construct() {
-        global $CFG;
-
-        debugging('admin_page_defaultmessageoutputs class is deprecated. Please use admin_page_managemessageoutputs instead.',
-            DEBUG_DEVELOPER);
-
-        admin_externalpage::__construct('defaultmessageoutputs', get_string('defaultmessageoutputs', 'message'), new moodle_url('/message/defaultoutputs.php'));
-    }
-}
-
 
 /**
  * Manage question behaviours page

@@ -1268,7 +1268,7 @@ function quiz_update_events($quiz, $override = null) {
         // Events module won't show user events when the courseid is nonzero.
         $event->courseid    = ($userid) ? 0 : $quiz->course;
         $event->groupid     = $groupid;
-        $event->userid      = $userid;
+        $event->userid      = 0;
         $event->modulename  = 'quiz';
         $event->instance    = $quiz->id;
         $event->timestart   = $timeopen;
@@ -1301,6 +1301,8 @@ function quiz_update_events($quiz, $override = null) {
             $params = new stdClass();
             $params->quiz = $quiz->name;
             $eventname = get_string('overrideusereventname', 'quiz', $params);
+            // Only set userid for override events.
+            $event->userid = $userid;
             // Set user override priority.
             $event->priority = CALENDAR_EVENT_USER_OVERRIDE_PRIORITY;
         } else {
@@ -1645,16 +1647,10 @@ function quiz_num_attempt_summary($quiz, $cm, $returnzero = false, $currentgroup
  */
 function quiz_attempt_summary_link_to_reports($quiz, $cm, $context, $returnzero = false,
         $currentgroup = 0) {
-    global $CFG;
-    $summary = quiz_num_attempt_summary($quiz, $cm, $returnzero, $currentgroup);
-    if (!$summary) {
-        return '';
-    }
+    global $PAGE;
 
-    require_once($CFG->dirroot . '/mod/quiz/report/reportlib.php');
-    $url = new moodle_url('/mod/quiz/report.php', array(
-            'id' => $cm->id, 'mode' => quiz_report_default_report($context)));
-    return html_writer::link($url, $summary);
+    return $PAGE->get_renderer('mod_quiz')->quiz_attempt_summary_link_to_reports(
+            $quiz, $cm, $context, $returnzero, $currentgroup);
 }
 
 /**
@@ -1716,7 +1712,7 @@ function quiz_extend_settings_navigation($settings, $quiznode) {
         $beforekey = $keys[$i + 1];
     }
 
-    if (has_capability('mod/quiz:manageoverrides', $PAGE->cm->context)) {
+    if (has_any_capability(['mod/quiz:manageoverrides', 'mod/quiz:viewoverrides'], $PAGE->cm->context)) {
         $url = new moodle_url('/mod/quiz/overrides.php', array('cmid'=>$PAGE->cm->id));
         $node = navigation_node::create(get_string('groupoverrides', 'quiz'),
                 new moodle_url($url, array('mode'=>'group')),

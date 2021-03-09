@@ -954,7 +954,7 @@ function forum_scale_used_anywhere(int $scaleid): bool {
         return false;
     }
 
-    return $DB->record_exists('forum', ['scale' => $scaleid * -1]);
+    return $DB->record_exists_select('forum', "scale = ? and assessed > 0", [$scaleid * -1]);
 }
 
 // SQL FUNCTIONS ///////////////////////////////////////////////////////////
@@ -2450,7 +2450,7 @@ function forum_print_discussion_header(&$post, $forum, $group = -1, $datestring 
     // Group picture
     if ($group !== -1) {  // Groups are active - group is a group data object or NULL
         echo '<td class="picture group">';
-        if (!empty($group->picture) and empty($group->hidepicture)) {
+        if (!empty($group->picture)) {
             if ($canviewparticipants && $COURSE->groupmode) {
                 $picturelink = true;
             } else {

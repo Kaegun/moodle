@@ -821,6 +821,13 @@ $functions = array(
         'type'        => 'write',
         'services' => array(MOODLE_OFFICIAL_MOBILE_SERVICE),
     ),
+    'core_files_get_unused_draft_itemid' => array(
+        'classname' => 'core_files\external\get\unused_draft',
+        'methodname' => 'execute',
+        'description' => 'Generate a new draft itemid for the current user.',
+        'type'        => 'write',
+        'services' => array(MOODLE_OFFICIAL_MOBILE_SERVICE),
+    ),
     'core_form_get_filetypes_browser_data' => array(
         'classname' => 'core_form\external',
         'methodname' => 'get_filetypes_browser_data',
@@ -828,6 +835,13 @@ $functions = array(
         'description' => 'Provides data for the filetypes element browser.',
         'type' => 'read',
         'loginrequired' => false,
+        'ajax' => true,
+    ),
+    'core_form_dynamic_form' => array(
+        'classname' => 'core_form\external\dynamic_form',
+        'methodname' => 'execute',
+        'description' => 'Process submission of a dynamic (modal) form',
+        'type' => 'write',
         'ajax' => true,
     ),
     'core_get_component_strings' => array(
@@ -2609,6 +2623,16 @@ $functions = array(
         'services'      => array(MOODLE_OFFICIAL_MOBILE_SERVICE),
     ),
 
+    'core_block_fetch_addable_blocks' => array(
+        'classname'     => 'core_block\external\fetch_addable_blocks',
+        'methodname'    => 'execute',
+        'description'   => 'Returns all addable blocks in a given page.',
+        'type'          => 'read',
+        'capabilities'  => 'moodle/site:manageblocks',
+        'ajax'          => true,
+        'services'      => array(MOODLE_OFFICIAL_MOBILE_SERVICE),
+    ),
+
     // Filters functions.
     'core_filters_get_available_in_context' => array(
         'classname'   => 'core_filters\external',
@@ -2707,6 +2731,15 @@ $functions = array(
         'methodname'    => 'execute',
         'classpath'     => '',
         'description'   => 'Rename a content in the content bank.',
+        'type'          => 'write',
+        'ajax'          => 'true',
+        'capabilities'  => 'moodle/contentbank:manageowncontent',
+    ],
+    'core_contentbank_set_content_visibility' => [
+        'classname'     => 'core_contentbank\external\set_content_visibility',
+        'methodname'    => 'execute',
+        'classpath'     => '',
+        'description'   => 'Set the visibility of a content in the content bank.',
         'type'          => 'write',
         'ajax'          => 'true',
         'capabilities'  => 'moodle/contentbank:manageowncontent',

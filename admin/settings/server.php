@@ -38,6 +38,8 @@ if ($hassiteconfig) {
         new lang_string('pathtodot_help', 'admin'), ''));
     $temp->add(new admin_setting_configexecutable('pathtogs', new lang_string('pathtogs', 'admin'),
         new lang_string('pathtogs_help', 'admin'), '/usr/bin/gs'));
+    $temp->add(new admin_setting_configexecutable('pathtopdftoppm', new lang_string('pathtopdftoppm', 'admin'),
+        new lang_string('pathtopdftoppm_help', 'admin'), ''));
     $temp->add(new admin_setting_configexecutable('pathtopython', new lang_string('pathtopython', 'admin'),
         new lang_string('pathtopythondesc', 'admin'), ''));
     $ADMIN->add('server', $temp);
@@ -72,6 +74,22 @@ if ($hassiteconfig) {
 
     $temp->add(new admin_setting_configduration('sessiontimeout', new lang_string('sessiontimeout', 'admin'),
         new lang_string('configsessiontimeout', 'admin'), 8 * 60 * 60));
+
+    $sessiontimeoutwarning = new admin_setting_configduration('sessiontimeoutwarning',
+        new lang_string('sessiontimeoutwarning', 'admin'),
+        new lang_string('configsessiontimeoutwarning', 'admin'), 20 * 60);
+
+    $sessiontimeoutwarning->set_validate_function(function(int $value): string {
+        global $CFG;
+        // Check sessiontimeoutwarning is less than sessiontimeout.
+        if ($CFG->sessiontimeout <= $value) {
+            return get_string('configsessiontimeoutwarningcheck', 'admin');
+        } else {
+            return '';
+        }
+    });
+
+    $temp->add($sessiontimeoutwarning);
 
     $temp->add(new admin_setting_configtext('sessioncookie', new lang_string('sessioncookie', 'admin'),
         new lang_string('configsessioncookie', 'admin'), '', PARAM_ALPHANUM));

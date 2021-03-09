@@ -1525,8 +1525,6 @@ function content_item_to_form(object $tool, object $typeconfig, object $item) : 
         }
         $config->instructorcustomparameters = implode("\n", $customparameters);
     }
-    // Including a JSON version of the form data to support adding many items in one submit.
-    $config->contentitemjson = json_encode($item);
     return $config;
 }
 
@@ -2074,6 +2072,18 @@ function lti_calculate_custom_parameter($value) {
             return implode(",", groups_get_user_groups($COURSE->id, $USER->id)[0]);
         case 'Context.id.history':
             return implode(",", get_course_history($COURSE));
+        case 'CourseSection.timeFrame.begin':
+            if (empty($COURSE->startdate)) {
+                return "";
+            }
+            $dt = new DateTime("@$COURSE->startdate", new DateTimeZone('UTC'));
+            return $dt->format(DateTime::ATOM);
+        case 'CourseSection.timeFrame.end':
+            if (empty($COURSE->enddate)) {
+                return "";
+            }
+            $dt = new DateTime("@$COURSE->enddate", new DateTimeZone('UTC'));
+            return $dt->format(DateTime::ATOM);
     }
     return null;
 }
@@ -2311,7 +2321,8 @@ function lti_get_lti_types_by_course($courseid, $coursevisible = null) {
                 FROM {lti_types}
                WHERE coursevisible $coursevisiblesql
                  AND ($coursecond)
-                 AND state = :active";
+                 AND state = :active
+            ORDER BY name ASC";
 
     return $DB->get_records_sql($query,
         array('siteid' => $SITE->id, 'courseid' => $courseid, 'active' => LTI_TOOL_STATE_CONFIGURED) + $coursevisparams);
@@ -2363,11 +2374,7 @@ function lti_get_configured_types($courseid, $sectionreturn = 0) {
             $type->help     = clean_param($trimmeddescription, PARAM_NOTAGS);
             $type->helplink = get_string('modulename_shortcut_link', 'lti');
         }
-        if (empty($ltitype->icon)) {
-            $type->icon = $OUTPUT->pix_icon('icon', '', 'lti', array('class' => 'icon'));
-        } else {
-            $type->icon = html_writer::empty_tag('img', array('src' => $ltitype->icon, 'alt' => '', 'class' => 'icon'));
-        }
+        $type->icon = html_writer::empty_tag('img', ['src' => get_tool_type_icon_url($ltitype), 'alt' => '', 'class' => 'icon']);
         $type->link = new moodle_url('/course/modedit.php', array('add' => 'lti', 'return' => 0, 'course' => $courseid,
             'sr' => $sectionreturn, 'typeid' => $ltitype->id));
         $types[] = $type;
@@ -3739,7 +3746,8 @@ function lti_get_capabilities() {
        'CourseSection.label' => 'context_label',
        'CourseSection.sourcedId' => 'lis_course_section_sourcedid',
        'CourseSection.longDescription' => '$COURSE->summary',
-       'CourseSection.timeFrame.begin' => '$COURSE->startdate',
+       'CourseSection.timeFrame.begin' => null,
+       'CourseSection.timeFrame.end' => null,
        'ResourceLink.id' => 'resource_link_id',
        'ResourceLink.title' => 'resource_link_title',
        'ResourceLink.description' => 'resource_link_description',
